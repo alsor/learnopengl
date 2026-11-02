@@ -9,6 +9,7 @@ find_package(glfw3 REQUIRED)
 add_executable(app
     main.cpp
     glad.c
+    image_loader.cpp
 )
 
 target_include_directories(app PRIVATE
