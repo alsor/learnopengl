@@ -7,16 +7,25 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
-void framebuffer_size_callback(GLFWwindow* window, int width, int height)
-{
-    glViewport(0, 0, width, height);
-}
+void framebuffer_size_callback(GLFWwindow *window, int width, int height);
+void processInput(GLFWwindow *window);
+void mouse_callback(GLFWwindow *window, double xpos, double ypos);
+void scroll_callback(GLFWwindow *window, double xoffset, double yoffset);
 
-void processInput(GLFWwindow* window)
-{
-    if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
-        glfwSetWindowShouldClose(window, true);
-}
+float deltaTime = 0.0f;
+float lastFrame = 0.0f;
+
+float lastX = 400;
+float lastY = 300;
+bool firstMouse = true;
+
+float pitch = 0.0;
+float yaw = -90.0;
+float fov = 45.0;
+
+glm::vec3 cameraPos = glm::vec3(0.0f, 0.0f, 3.0f);
+glm::vec3 cameraFront = glm::vec3(0.0f, 0.0f, -1.0f);
+glm::vec3 cameraUp = glm::vec3(0.0f, 1.0f, 0.0f);
 
 int main()
 {
@@ -37,6 +46,10 @@ int main()
         return -1;
     }
     glfwMakeContextCurrent(window);
+    glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
+    glfwSetCursorPosCallback(window, mouse_callback);
+    glfwSetScrollCallback(window, scroll_callback);
+    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
     {
@@ -45,11 +58,11 @@ int main()
         return -1;
     }
 
-    glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
+    // int nrAttributes;
+    // glGetIntegerv(GL_MAX_VERTEX_ATTRIBS, &nrAttributes);
+    // std::cout << "Maximum vertex attributes: " << nrAttributes << std::endl;
 
-    int nrAttributes;
-    glGetIntegerv(GL_MAX_VERTEX_ATTRIBS, &nrAttributes);
-    std::cout << "Maximum vertex attributes: " << nrAttributes << std::endl;
+    glEnable(GL_DEPTH_TEST);
 
     // Compile and link shaders
     Shader ourShader("../resources/shader.vs", "../resources/shader.fs");
@@ -105,6 +118,19 @@ int main()
         -0.5f,  0.5f,  0.5f,  0.0f, 0.0f,
         -0.5f,  0.5f, -0.5f,  0.0f, 1.0f
     };
+    glm::vec3 cubePositions[] = {
+        glm::vec3( 0.0f,  0.0f,  0.0f), 
+        glm::vec3( 2.0f,  5.0f, -15.0f), 
+        glm::vec3(-1.5f, -2.2f, -2.5f),  
+        glm::vec3(-3.8f, -2.0f, -12.3f),  
+        glm::vec3( 2.4f, -0.4f, -3.5f),  
+        glm::vec3(-1.7f,  3.0f, -7.5f),  
+        glm::vec3( 1.3f, -2.0f, -2.5f),  
+        glm::vec3( 1.5f,  2.0f, -2.5f), 
+        glm::vec3( 1.5f,  0.2f, -1.5f), 
+        glm::vec3(-1.3f,  1.0f, -1.5f)  
+    };
+
     // unsigned int indices[] = {
     //     0, 1, 3,
     //     1, 2, 3
@@ -178,28 +204,14 @@ int main()
     unsigned int modelLoc = glGetUniformLocation(ourShader.ID, "model");
     unsigned int viewLoc = glGetUniformLocation(ourShader.ID, "view");
     unsigned int projectionLoc = glGetUniformLocation(ourShader.ID, "projection");
-    
-    glm::mat4 projection = glm::perspective(glm::radians(45.0f), 800.0f / 600.0f, 0.1f, 100.0f);
-    glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
-
-    glEnable(GL_DEPTH_TEST);
-
-    glm::vec3 cubePositions[] = {
-        glm::vec3( 0.0f,  0.0f,  0.0f), 
-        glm::vec3( 2.0f,  5.0f, -15.0f), 
-        glm::vec3(-1.5f, -2.2f, -2.5f),  
-        glm::vec3(-3.8f, -2.0f, -12.3f),  
-        glm::vec3( 2.4f, -0.4f, -3.5f),  
-        glm::vec3(-1.7f,  3.0f, -7.5f),  
-        glm::vec3( 1.3f, -2.0f, -2.5f),  
-        glm::vec3( 1.5f,  2.0f, -2.5f), 
-        glm::vec3( 1.5f,  0.2f, -1.5f), 
-        glm::vec3(-1.3f,  1.0f, -1.5f)  
-    };
 
     // Render loop
     while(!glfwWindowShouldClose(window))
     {
+        float currentFrame = glfwGetTime();
+        deltaTime = currentFrame - lastFrame;
+        lastFrame = currentFrame;
+
         processInput(window);
 
         glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
@@ -214,11 +226,14 @@ int main()
         glBindTexture(GL_TEXTURE_2D, texture2);
         
         ourShader.use();
-        
-        glm::mat4 view = glm::mat4(1.0f);
-        view = glm::translate(view, glm::vec3(0.0f, 0.0f, -3.0f));
+
+        glm::mat4 view;
+        view = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
         glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
-        
+
+        glm::mat4 projection = glm::perspective(glm::radians(fov), 800.0f / 600.0f, 0.1f, 100.0f);
+        glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
+
         glBindVertexArray(VAO);
         
         for (unsigned int i = 0; i < 10; i++)
@@ -246,4 +261,67 @@ int main()
 
     glfwTerminate();
     return 0;
+}
+
+void framebuffer_size_callback(GLFWwindow* window, int width, int height)
+{
+    glViewport(0, 0, width, height);
+}
+
+void processInput(GLFWwindow* window)
+{
+    if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
+        glfwSetWindowShouldClose(window, true);
+
+    const float cameraSpeed = 2.5f * deltaTime;
+    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
+        cameraPos += cameraSpeed * cameraFront;
+    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
+        cameraPos -= cameraSpeed * cameraFront;
+    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
+        cameraPos -= glm::normalize(glm::cross(cameraFront, cameraUp)) * cameraSpeed;
+    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
+        cameraPos += glm::normalize(glm::cross(cameraFront, cameraUp)) * cameraSpeed;
+}
+
+void mouse_callback(GLFWwindow *window, double xpos, double ypos)
+{
+    if (firstMouse)
+    {
+        lastX = xpos;
+        lastY = ypos;
+        firstMouse = false;
+    }
+
+    float xoffset = xpos - lastX;
+    float yoffset = lastY - ypos;
+    lastX = xpos;
+    lastY = ypos;
+
+    const float sensitivity = 0.1f;
+    xoffset *= sensitivity;
+    yoffset *= sensitivity;
+
+    yaw += xoffset;
+    pitch += yoffset;
+
+    if (pitch > 89.0f)
+        pitch = 89.0f;
+    if (pitch < -89.0f)
+        pitch = -89.0f;
+
+    glm::vec3 direction;
+    direction.x = cos(glm::radians(yaw)) * cos(glm::radians(pitch));
+    direction.y = sin(glm::radians(pitch));
+    direction.z = sin(glm::radians(yaw)) * cos(glm::radians(pitch));
+    cameraFront = glm::normalize(direction);
+}
+
+void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
+{
+    fov -= (float)yoffset;
+    if (fov < 1.0f)
+        fov = 1.0f;
+    if (fov > 45.0f)
+        fov = 45.0f; 
 }
