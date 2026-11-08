@@ -79,47 +79,47 @@ int main()
 
     // Create vertex buffer
     float vertices[] = {
-        -0.5f, -0.5f, -0.5f,
-         0.5f, -0.5f, -0.5f,
-         0.5f,  0.5f, -0.5f,
-         0.5f,  0.5f, -0.5f,
-        -0.5f,  0.5f, -0.5f,
-        -0.5f, -0.5f, -0.5f,
+        -0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
+         0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f, 
+         0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f, 
+         0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f, 
+        -0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f, 
+        -0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f, 
 
-        -0.5f, -0.5f,  0.5f,
-         0.5f, -0.5f,  0.5f,
-         0.5f,  0.5f,  0.5f,
-         0.5f,  0.5f,  0.5f,
-        -0.5f,  0.5f,  0.5f,
-        -0.5f, -0.5f,  0.5f,
+        -0.5f, -0.5f,  0.5f,  0.0f,  0.0f, 1.0f,
+         0.5f, -0.5f,  0.5f,  0.0f,  0.0f, 1.0f,
+         0.5f,  0.5f,  0.5f,  0.0f,  0.0f, 1.0f,
+         0.5f,  0.5f,  0.5f,  0.0f,  0.0f, 1.0f,
+        -0.5f,  0.5f,  0.5f,  0.0f,  0.0f, 1.0f,
+        -0.5f, -0.5f,  0.5f,  0.0f,  0.0f, 1.0f,
 
-        -0.5f,  0.5f,  0.5f,
-        -0.5f,  0.5f, -0.5f,
-        -0.5f, -0.5f, -0.5f,
-        -0.5f, -0.5f, -0.5f,
-        -0.5f, -0.5f,  0.5f,
-        -0.5f,  0.5f,  0.5f,
+        -0.5f,  0.5f,  0.5f, -1.0f,  0.0f,  0.0f,
+        -0.5f,  0.5f, -0.5f, -1.0f,  0.0f,  0.0f,
+        -0.5f, -0.5f, -0.5f, -1.0f,  0.0f,  0.0f,
+        -0.5f, -0.5f, -0.5f, -1.0f,  0.0f,  0.0f,
+        -0.5f, -0.5f,  0.5f, -1.0f,  0.0f,  0.0f,
+        -0.5f,  0.5f,  0.5f, -1.0f,  0.0f,  0.0f,
 
-         0.5f,  0.5f,  0.5f,
-         0.5f,  0.5f, -0.5f,
-         0.5f, -0.5f, -0.5f,
-         0.5f, -0.5f, -0.5f,
-         0.5f, -0.5f,  0.5f,
-         0.5f,  0.5f,  0.5f,
+         0.5f,  0.5f,  0.5f,  1.0f,  0.0f,  0.0f,
+         0.5f,  0.5f, -0.5f,  1.0f,  0.0f,  0.0f,
+         0.5f, -0.5f, -0.5f,  1.0f,  0.0f,  0.0f,
+         0.5f, -0.5f, -0.5f,  1.0f,  0.0f,  0.0f,
+         0.5f, -0.5f,  0.5f,  1.0f,  0.0f,  0.0f,
+         0.5f,  0.5f,  0.5f,  1.0f,  0.0f,  0.0f,
 
-        -0.5f, -0.5f, -0.5f,
-         0.5f, -0.5f, -0.5f,
-         0.5f, -0.5f,  0.5f,
-         0.5f, -0.5f,  0.5f,
-        -0.5f, -0.5f,  0.5f,
-        -0.5f, -0.5f, -0.5f,
+        -0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,
+         0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,
+         0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,
+         0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,
+        -0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,
+        -0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,
 
-        -0.5f,  0.5f, -0.5f,
-         0.5f,  0.5f, -0.5f,
-         0.5f,  0.5f,  0.5f,
-         0.5f,  0.5f,  0.5f,
-        -0.5f,  0.5f,  0.5f,
-        -0.5f,  0.5f, -0.5f
+        -0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f,
+         0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f,
+         0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,
+         0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,
+        -0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,
+        -0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f
     };
 
     // unsigned int indices[] = {
@@ -137,10 +137,10 @@ int main()
 
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
     glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void *)0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void *)0);
     glEnableVertexAttribArray(0);
-    // glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void *)(3 * sizeof(float)));
-    // glEnableVertexAttribArray(1);
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void *)(3 * sizeof(float)));
+    glEnableVertexAttribArray(1);
     // glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void *)(6 * sizeof(float)));
     // glEnableVertexAttribArray(2);
     
@@ -151,7 +151,7 @@ int main()
     glGenVertexArrays(1, &lightCubeVAO);
     glBindVertexArray(lightCubeVAO);
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void *)0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void *)0);
     glEnableVertexAttribArray(0);
 
     // glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
@@ -196,9 +196,8 @@ int main()
     }
     stbi_image_free(data);
 
-
-    lightCubeShader.use();
-    
+    lightingShader.use();
+    lightingShader.setVec3("lightPos", lightPos);
 
     // Render loop
     while(!glfwWindowShouldClose(window))
@@ -209,7 +208,7 @@ int main()
 
         processInput(window);
 
-        glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
+        glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         // float timeValue = glfwGetTime();
@@ -228,6 +227,7 @@ int main()
         lightingShader.setVec3("lightColor", 1.0f, 1.0f, 1.0f);
         lightingShader.setMat4("projection", projection);
         lightingShader.setMat4("view", view);
+        lightingShader.setVec3("viewPos", cameraPos);
 
         glm::mat4 model = glm::mat4(1.0f);
         lightingShader.setMat4("model", model);
