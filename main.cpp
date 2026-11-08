@@ -197,7 +197,6 @@ int main()
     stbi_image_free(data);
 
     lightingShader.use();
-    lightingShader.setVec3("lightPos", lightPos);
 
     // Render loop
     while(!glfwWindowShouldClose(window))
@@ -218,7 +217,10 @@ int main()
         glBindTexture(GL_TEXTURE_2D, texture1);
         glActiveTexture(GL_TEXTURE1);
         glBindTexture(GL_TEXTURE_2D, texture2);
-        
+
+        lightPos.x = 1.0f + sin(glfwGetTime()) * 2.0f;
+        lightPos.y = sin(glfwGetTime() / 2.0f);
+
         glm::mat4 projection = glm::perspective(glm::radians(fov), 800.0f / 600.0f, 0.1f, 100.0f);
         glm::mat4 view = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
 
@@ -227,6 +229,7 @@ int main()
         lightingShader.setVec3("lightColor", 1.0f, 1.0f, 1.0f);
         lightingShader.setMat4("projection", projection);
         lightingShader.setMat4("view", view);
+        lightingShader.setVec3("lightPos", lightPos);
         lightingShader.setVec3("viewPos", cameraPos);
 
         glm::mat4 model = glm::mat4(1.0f);
