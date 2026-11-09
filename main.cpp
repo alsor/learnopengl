@@ -160,7 +160,7 @@ int main()
 
     // load texture
     unsigned int diffuseMap = loadTexture("../resources/container2.png");
-    unsigned int specularMap = loadTexture("../resources/container2_specular.png");
+    unsigned int specularMap = loadTexture("../resources/container2_specular_with_wood.png");
 
     lightingShader.use();
     lightingShader.setInt("material.diffuse", 0);
@@ -194,8 +194,8 @@ int main()
         lightingShader.setVec3("light.ambient", ambientColor);
         lightingShader.setVec3("light.diffuse", diffuseColor);
         lightingShader.setVec3("light.specular", 1.0f, 1.0f, 1.0f);
-        lightPos.x = 1.0f + sin(glfwGetTime()) * 2.0f;
-        lightPos.y = sin(glfwGetTime() / 2.0f);
+        // lightPos.x = 1.0f + sin(glfwGetTime()) * 2.0f;
+        // lightPos.y = sin(glfwGetTime() / 2.0f);
         lightingShader.setVec3("light.position", lightPos);
 
         lightingShader.setMat4("projection", projection);
@@ -203,6 +203,7 @@ int main()
         lightingShader.setVec3("viewPos", cameraPos);
 
         glm::mat4 model = glm::mat4(1.0f);
+        model = glm::rotate(model, (float)glfwGetTime(), glm::vec3(0.0, 1.0, 0.0));
         lightingShader.setMat4("model", model);
 
         glActiveTexture(GL_TEXTURE0);
