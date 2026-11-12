@@ -8,6 +8,8 @@
 
 #include <string>
 #include <vector>
+#include <iostream>
+
 using namespace std;
 
 struct Vertex
@@ -21,6 +23,7 @@ struct Texture
 {
     unsigned int id;
     string type;
+    string path;
 };
 
 class Mesh
@@ -37,6 +40,8 @@ public:
         this->textures = textures;
 
         setupMesh();
+
+        cout << "Loaded mesh with " << this->vertices.size() << " vertices " << (this->indices.size() / 3) << " triangles" << endl;
     }
 
     void Draw(Shader &shader)
