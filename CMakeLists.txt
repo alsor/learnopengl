@@ -5,6 +5,7 @@ set(CMAKE_CXX_STANDARD 17)
 
 find_package(OpenGL REQUIRED)
 find_package(glfw3 REQUIRED)
+find_package(assimp REQUIRED)
 
 add_executable(app
     main.cpp
@@ -16,4 +17,8 @@ target_include_directories(app PRIVATE
     ${CMAKE_SOURCE_DIR}/include
 )
 
-target_link_libraries(app glfw OpenGL::GL)
+target_link_libraries(app PRIVATE 
+    glfw 
+    OpenGL::GL
+    assimp::assimp
+)
