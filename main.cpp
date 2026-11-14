@@ -74,6 +74,8 @@ int main()
     // std::cout << "Maximum vertex attributes: " << nrAttributes << std::endl;
 
     glEnable(GL_DEPTH_TEST);
+    glEnable(GL_CULL_FACE);
+    // glCullFace(GL_FRONT);
 
     float vertices[] = {
         // positions          // normals           // texture coords
@@ -134,6 +136,7 @@ int main()
     // Compile and link shaders
     Shader modelShader("../resources/lighting.vs", "../resources/lighting.fs");
     // Shader modelShader("../resources/model_diffuse.vs", "../resources/model_diffuse.fs");
+    // Shader modelShader("../resources/model_diffuse.vs", "../resources/depth_color.fs");
     Shader lightCubeShader("../resources/light_cube.vs", "../resources/light_cube.fs");
 
     Model ourModel("../resources/backpack/backpack.obj");
@@ -238,6 +241,15 @@ void processInput(GLFWwindow *window)
 {
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
         glfwSetWindowShouldClose(window, true);
+
+    if (glfwGetKey(window, GLFW_KEY_F1) == GLFW_PRESS)
+        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+    if (glfwGetKey(window, GLFW_KEY_F2) == GLFW_PRESS)
+        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+    if (glfwGetKey(window, GLFW_KEY_F3) == GLFW_PRESS)
+        glEnable(GL_CULL_FACE);
+    if (glfwGetKey(window, GLFW_KEY_F4) == GLFW_PRESS)
+        glDisable(GL_CULL_FACE);
 
     const float cameraSpeed = 2.5f * deltaTime;
     if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
