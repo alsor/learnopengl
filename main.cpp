@@ -36,6 +36,9 @@ glm::vec3 pointLight1Position = glm::vec3(1.5f, 1.0f, 0.5f);
 
 glm::vec3 lightPos(1.2f, 1.0f, 2.0f);
 
+bool isPaused = false;
+float elapsedTime = 0.0f;
+
 int main()
 {
     // Create window
@@ -156,6 +159,9 @@ int main()
 
         processInput(window);
 
+        if (!isPaused)
+            elapsedTime += deltaTime;
+
         glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -198,7 +204,7 @@ int main()
         modelShader.setMat4("view", view);
         glm::mat4 model = glm::mat4(1.0f);
         model = glm::translate(model, glm::vec3(0.0f, 0.0f, 0.0f));
-        model = glm::rotate(model, (float)glfwGetTime(), glm::vec3(0.0, 1.0, 0.0));
+        model = glm::rotate(model, (float)elapsedTime, glm::vec3(0.0, 1.0, 0.0));
         model = glm::scale(model, glm::vec3(0.4f));
         modelShader.setMat4("model", model);
 
@@ -241,6 +247,12 @@ void processInput(GLFWwindow *window)
 {
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
         glfwSetWindowShouldClose(window, true);
+
+    static bool wasSpacePressed = false;
+    bool spacePressed = glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS;
+    if (spacePressed && !wasSpacePressed)
+        isPaused = !isPaused;
+    wasSpacePressed = spacePressed;
 
     if (glfwGetKey(window, GLFW_KEY_F1) == GLFW_PRESS)
         glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
