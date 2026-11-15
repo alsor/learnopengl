@@ -198,11 +198,24 @@ int main()
     glEnableVertexAttribArray(0);
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void *)0);
 
+    // mirror cube VAO
+    unsigned int mirrorCubeVAO, mirrorCubeVBO;
+    glGenVertexArrays(1, &mirrorCubeVAO);
+    glGenBuffers(1, &mirrorCubeVBO);
+    glBindVertexArray(mirrorCubeVAO);
+    glBindBuffer(GL_ARRAY_BUFFER, mirrorCubeVBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), &vertices, GL_STATIC_DRAW);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void *)0);
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void *)(3 * sizeof(float)));
+
     // Compile and link shaders
     Shader modelShader("../resources/lighting.vs", "../resources/lighting.fs");
     // Shader modelShader("../resources/model_diffuse.vs", "../resources/model_diffuse.fs");
     // Shader modelShader("../resources/model_diffuse.vs", "../resources/depth_color.fs");
     Shader skyboxShader("../resources/skybox.vs", "../resources/skybox.fs");
+    Shader mirrorCubeShader("../resources/mirror_cube.vs", "../resources/mirror_cube.fs");
     Shader lightCubeShader("../resources/light_cube.vs", "../resources/light_cube.fs");
 
     Model ourModel("../resources/backpack/backpack.obj");
@@ -215,6 +228,9 @@ int main()
 
     skyboxShader.use();
     skyboxShader.setInt("skybox", 0);
+
+    mirrorCubeShader.use();
+    mirrorCubeShader.setInt("skybox", 0);
 
     // Render loop
     while (!glfwWindowShouldClose(window))
@@ -235,7 +251,8 @@ int main()
         glm::mat4 view = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
 
         modelShader.use();
-
+        modelShader.setMat4("projection", projection);
+        modelShader.setMat4("view", view);
         modelShader.setVec3("viewPos", cameraPos);
         modelShader.setFloat("material.shininess", 32.0f);
 
@@ -267,15 +284,30 @@ int main()
         // lightPos.x = 1.0f + sin(glfwGetTime()) * 2.0f;
         // lightPos.y = sin(glfwGetTime() / 2.0f);
 
-        modelShader.setMat4("projection", projection);
-        modelShader.setMat4("view", view);
         glm::mat4 model = glm::mat4(1.0f);
+        model = glm::scale(model, glm::vec3(0.4f));
         model = glm::translate(model, glm::vec3(0.0f, 0.0f, 0.0f));
         model = glm::rotate(model, (float)elapsedTime, glm::vec3(0.0, 1.0, 0.0));
-        model = glm::scale(model, glm::vec3(0.4f));
         modelShader.setMat4("model", model);
 
         ourModel.Draw(modelShader);
+
+        glDisable(GL_CULL_FACE);
+
+        // mirror cube
+        mirrorCubeShader.use();
+        mirrorCubeShader.setMat4("projection", projection);
+        mirrorCubeShader.setMat4("view", view);
+        mirrorCubeShader.setVec3("cameraPos", cameraPos);
+        model = glm::mat4(1.0f);
+        model = glm::translate(model, glm::vec3(-2.0f, 0.0f, 0.0f));
+        model = glm::rotate(model, (float)elapsedTime, glm::vec3(0.0, 1.0, 0.0));
+        mirrorCubeShader.setMat4("model", model);
+        glBindVertexArray(mirrorCubeVAO);
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_CUBE_MAP, cubemapTexture);
+        glDrawArrays(GL_TRIANGLES, 0, 36);
+        glBindVertexArray(0);
 
         // single rotating cube
         // glm::mat4 model = glm::mat4(1.0f);
@@ -294,6 +326,8 @@ int main()
         model = glm::scale(model, glm::vec3(0.15f));
         lightCubeShader.setMat4("model", model);
         glDrawArrays(GL_TRIANGLES, 0, 36);
+
+        glEnable(GL_CULL_FACE);
 
         // skybox
         glDepthFunc(GL_LEQUAL);
