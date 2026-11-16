@@ -199,11 +199,11 @@ int main()
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void *)0);
 
     // mirror cube VAO
-    unsigned int mirrorCubeVAO, mirrorCubeVBO;
-    glGenVertexArrays(1, &mirrorCubeVAO);
-    glGenBuffers(1, &mirrorCubeVBO);
-    glBindVertexArray(mirrorCubeVAO);
-    glBindBuffer(GL_ARRAY_BUFFER, mirrorCubeVBO);
+    unsigned int cubeVAO, cubeVBO;
+    glGenVertexArrays(1, &cubeVAO);
+    glGenBuffers(1, &cubeVBO);
+    glBindVertexArray(cubeVAO);
+    glBindBuffer(GL_ARRAY_BUFFER, cubeVBO);
     glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), &vertices, GL_STATIC_DRAW);
     glEnableVertexAttribArray(0);
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void *)0);
@@ -215,7 +215,8 @@ int main()
     // Shader modelShader("../resources/model_diffuse.vs", "../resources/model_diffuse.fs");
     // Shader modelShader("../resources/model_diffuse.vs", "../resources/depth_color.fs");
     Shader skyboxShader("../resources/skybox.vs", "../resources/skybox.fs");
-    Shader mirrorCubeShader("../resources/mirror_cube.vs", "../resources/mirror_cube.fs");
+    Shader reflectionShader("../resources/reflection.vs", "../resources/reflection.fs");
+    Shader refractionShader("../resources/refraction.vs", "../resources/refraction.fs");
     Shader lightCubeShader("../resources/light_cube.vs", "../resources/light_cube.fs");
 
     Model ourModel("../resources/backpack/backpack.obj");
@@ -229,8 +230,8 @@ int main()
     skyboxShader.use();
     skyboxShader.setInt("skybox", 0);
 
-    mirrorCubeShader.use();
-    mirrorCubeShader.setInt("skybox", 0);
+    reflectionShader.use();
+    reflectionShader.setInt("skybox", 0);
 
     // Render loop
     while (!glfwWindowShouldClose(window))
@@ -289,21 +290,35 @@ int main()
         model = glm::translate(model, glm::vec3(0.0f, 0.0f, 0.0f));
         model = glm::rotate(model, (float)elapsedTime, glm::vec3(0.0, 1.0, 0.0));
         modelShader.setMat4("model", model);
-
         ourModel.Draw(modelShader);
-
+        
         glDisable(GL_CULL_FACE);
-
+        
         // mirror cube
-        mirrorCubeShader.use();
-        mirrorCubeShader.setMat4("projection", projection);
-        mirrorCubeShader.setMat4("view", view);
-        mirrorCubeShader.setVec3("cameraPos", cameraPos);
+        reflectionShader.use();
+        reflectionShader.setMat4("projection", projection);
+        reflectionShader.setMat4("view", view);
+        reflectionShader.setVec3("cameraPos", cameraPos);
         model = glm::mat4(1.0f);
         model = glm::translate(model, glm::vec3(-2.0f, 0.0f, 0.0f));
         model = glm::rotate(model, (float)elapsedTime, glm::vec3(0.0, 1.0, 0.0));
-        mirrorCubeShader.setMat4("model", model);
-        glBindVertexArray(mirrorCubeVAO);
+        reflectionShader.setMat4("model", model);
+        glBindVertexArray(cubeVAO);
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_CUBE_MAP, cubemapTexture);
+        glDrawArrays(GL_TRIANGLES, 0, 36);
+        glBindVertexArray(0);
+        
+        // glass cube
+        refractionShader.use();
+        refractionShader.setMat4("projection", projection);
+        refractionShader.setMat4("view", view);
+        refractionShader.setVec3("cameraPos", cameraPos);
+        model = glm::mat4(1.0f);
+        model = glm::translate(model, glm::vec3(2.0f, 0.0f, 0.0f));
+        model = glm::rotate(model, (float)elapsedTime, glm::vec3(0.0, 1.0, 0.0));
+        refractionShader.setMat4("model", model);
+        glBindVertexArray(cubeVAO);
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_CUBE_MAP, cubemapTexture);
         glDrawArrays(GL_TRIANGLES, 0, 36);
