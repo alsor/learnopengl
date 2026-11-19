@@ -189,6 +189,8 @@ unsigned int loadTextureFromFile(char const *path, const string &directory)
         stbi_image_free(data);
     }
 
+    std::cout << "Texture loaded from " << filename << std::endl;
+
     return textureID;
 }
 #endif

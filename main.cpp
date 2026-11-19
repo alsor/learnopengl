@@ -220,6 +220,7 @@ int main()
     // Shader reflectionShader("../resources/reflection.vs", "../resources/reflection.fs");
     // Shader refractionShader("../resources/refraction.vs", "../resources/refraction.fs");
     // Shader lightCubeShader("../resources/light_cube.vs", "../resources/light_cube.fs");
+    Shader asteroidShader("../resources/instancing.vs", "../resources/instancing.fs");
 
     // Model ourModel("../resources/backpack/backpack.obj");
     Model planet("../resources/planet/planet.obj");
@@ -238,12 +239,12 @@ int main()
     // reflectionShader.setInt("skybox", 0);
 
     // asteroid belt
-    unsigned int amount = 60000;
+    unsigned int amount = 250000;
     glm::mat4 *modelMatrices;
     modelMatrices = new glm::mat4[amount];
     srand(glfwGetTime());
-    float radius = 50.0;
-    float offset = 2.5f;
+    float radius = 175.0;
+    float offset = 45.0f;
     for (unsigned int i = 0; i < amount; i++)
     {
         glm::mat4 model = glm::mat4(1.0f);
@@ -267,6 +268,32 @@ int main()
         model = glm::rotate(model, rotAngle, glm::vec3(0.4f, 0.6f, 0.8f));
 
         modelMatrices[i] = model;
+    }
+    // configure instance array
+    unsigned int buffer;
+    glGenBuffers(1, &buffer);
+    glBindBuffer(GL_ARRAY_BUFFER, buffer);
+    glBufferData(GL_ARRAY_BUFFER, amount * sizeof(glm::mat4), &modelMatrices[0], GL_STATIC_DRAW);
+    for (unsigned int i = 0; i < rock.meshes.size(); i++)
+    {
+        unsigned int VAO = rock.meshes[i].VAO;
+        glBindVertexArray(VAO);
+
+        glEnableVertexAttribArray(3);
+        glVertexAttribPointer(3, 4, GL_FLOAT, GL_FALSE, sizeof(glm::mat4), (void *)0);
+        glEnableVertexAttribArray(4);
+        glVertexAttribPointer(4, 4, GL_FLOAT, GL_FALSE, sizeof(glm::mat4), (void *)(sizeof(glm::vec4)));
+        glEnableVertexAttribArray(5);
+        glVertexAttribPointer(5, 4, GL_FLOAT, GL_FALSE, sizeof(glm::mat4), (void *)(2 * sizeof(glm::vec4)));
+        glEnableVertexAttribArray(6);
+        glVertexAttribPointer(6, 4, GL_FLOAT, GL_FALSE, sizeof(glm::mat4), (void *)(3 * sizeof(glm::vec4)));
+
+        glVertexAttribDivisor(3, 1);
+        glVertexAttribDivisor(4, 1);
+        glVertexAttribDivisor(5, 1);
+        glVertexAttribDivisor(6, 1);
+
+        glBindVertexArray(0);
     }
 
     // Render loop
@@ -397,12 +424,20 @@ int main()
         model = glm::translate(model, glm::vec3(0.0f, -3.0f, 0.0f));
         model = glm::scale(model, glm::vec3(4.0f, 4.0f, 4.0f));
         modelShader.setMat4("model", model);
+        modelShader.setInt("texture_diffuse1", 0);
         planet.Draw(modelShader);
 
-        for (unsigned int i = 0; i < amount; i++)
+        asteroidShader.use();
+        asteroidShader.setMat4("projection", projection);
+        asteroidShader.setMat4("view", view);
+        asteroidShader.setInt("texture_diffuse1", 0);
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, rock.textures_loaded[0].id);
+        for (unsigned int i = 0; i < rock.meshes.size(); i++)
         {
-            modelShader.setMat4("model", modelMatrices[i]);
-            rock.Draw(modelShader);
+            glBindVertexArray(rock.meshes[i].VAO);
+            glDrawElementsInstanced(GL_TRIANGLES, (unsigned int)rock.meshes[i].indices.size(), GL_UNSIGNED_INT, 0, amount);
+            glBindVertexArray(0);
         }
 
         glfwSwapBuffers(window);
@@ -440,7 +475,7 @@ void processInput(GLFWwindow *window)
     if (glfwGetKey(window, GLFW_KEY_F4) == GLFW_PRESS)
         glDisable(GL_CULL_FACE);
 
-    const float cameraSpeed = 2.5f * deltaTime;
+    const float cameraSpeed = 25.0f * deltaTime;
     if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
         cameraPos += cameraSpeed * cameraFront;
     if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
