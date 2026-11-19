@@ -17,6 +17,8 @@ unsigned int loadCubemap(vector<std::string> faces);
 
 const unsigned int SCREEN_WIDTH = 900;
 const unsigned int SCREEN_HEIGHT = 900;
+const float NEAR_PLANE = 0.1f;
+const float FAR_PLANE = 1000.0f;
 
 float deltaTime = 0.0f;
 float lastFrame = 0.0f;
@@ -29,8 +31,8 @@ float pitch = 0.0;
 float yaw = -90.0;
 float fov = 45.0;
 
-glm::vec3 cameraPos = glm::vec3(0.0f, 0.5f, 4.0f);
-glm::vec3 cameraFront = glm::vec3(0.0f, 0.0f, -1.0f);
+glm::vec3 cameraPos = glm::vec3(0.0f, 30.0f, 75.0f);
+glm::vec3 cameraFront = glm::vec3(0.0f, -0.3f, -1.0f);
 glm::vec3 cameraUp = glm::vec3(0.0f, 1.0f, 0.0f);
 
 glm::vec3 pointLight1Position = glm::vec3(1.5f, 1.0f, 0.5f);
@@ -211,15 +213,17 @@ int main()
     glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void *)(3 * sizeof(float)));
 
     // Compile and link shaders
-    Shader modelShader("../resources/lighting.vs", "../resources/lighting.fs");
-    // Shader modelShader("../resources/model_diffuse.vs", "../resources/model_diffuse.fs");
+    // Shader modelShader("../resources/lighting.vs", "../resources/lighting.fs");
+    Shader modelShader("../resources/diffuse_only.vs", "../resources/diffuse_only.fs");
     // Shader modelShader("../resources/model_diffuse.vs", "../resources/depth_color.fs");
-    Shader skyboxShader("../resources/skybox.vs", "../resources/skybox.fs");
-    Shader reflectionShader("../resources/reflection.vs", "../resources/reflection.fs");
-    Shader refractionShader("../resources/refraction.vs", "../resources/refraction.fs");
-    Shader lightCubeShader("../resources/light_cube.vs", "../resources/light_cube.fs");
+    // Shader skyboxShader("../resources/skybox.vs", "../resources/skybox.fs");
+    // Shader reflectionShader("../resources/reflection.vs", "../resources/reflection.fs");
+    // Shader refractionShader("../resources/refraction.vs", "../resources/refraction.fs");
+    // Shader lightCubeShader("../resources/light_cube.vs", "../resources/light_cube.fs");
 
-    Model ourModel("../resources/backpack/backpack.obj");
+    // Model ourModel("../resources/backpack/backpack.obj");
+    Model planet("../resources/planet/planet.obj");
+    Model rock("../resources/rock/rock.obj");
 
     // glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
@@ -227,11 +231,43 @@ int main()
     // unsigned int diffuseMap = loadTexture("../resources/container2.png");
     // unsigned int specularMap = loadTexture("../resources/container2_specular_with_wood.png");
 
-    skyboxShader.use();
-    skyboxShader.setInt("skybox", 0);
+    // skyboxShader.use();
+    // skyboxShader.setInt("skybox", 0);
 
-    reflectionShader.use();
-    reflectionShader.setInt("skybox", 0);
+    // reflectionShader.use();
+    // reflectionShader.setInt("skybox", 0);
+
+    // asteroid belt
+    unsigned int amount = 60000;
+    glm::mat4 *modelMatrices;
+    modelMatrices = new glm::mat4[amount];
+    srand(glfwGetTime());
+    float radius = 50.0;
+    float offset = 2.5f;
+    for (unsigned int i = 0; i < amount; i++)
+    {
+        glm::mat4 model = glm::mat4(1.0f);
+
+        // translate
+        float angle = (float)i / (float)amount * 360.0f;
+        float displacement = (rand() % (int)(2 * offset * 100)) / 100.0f - offset;
+        float x = sin(angle) * radius + displacement;
+        displacement = (rand() % (int)(2 * offset * 100)) / 100.0f - offset;
+        float y = displacement * 0.4f;
+        displacement = (rand() % (int)(2 * offset * 100)) / 100.0f - offset;
+        float z = cos(angle) * radius + displacement;
+        model = glm::translate(model, glm::vec3(x, y, z));
+
+        // scale
+        float scale = (rand() % 20) / 100.0f + 0.05;
+        model = glm::scale(model, glm::vec3(scale));
+
+        // rotate
+        float rotAngle = (rand() % 360);
+        model = glm::rotate(model, rotAngle, glm::vec3(0.4f, 0.6f, 0.8f));
+
+        modelMatrices[i] = model;
+    }
 
     // Render loop
     while (!glfwWindowShouldClose(window))
@@ -248,81 +284,81 @@ int main()
         glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        glm::mat4 projection = glm::perspective(glm::radians(fov), (float)SCREEN_WIDTH / (float)SCREEN_HEIGHT, 0.1f, 100.0f);
+        glm::mat4 projection = glm::perspective(glm::radians(fov), (float)SCREEN_WIDTH / (float)SCREEN_HEIGHT, NEAR_PLANE, FAR_PLANE);
         glm::mat4 view = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
 
         modelShader.use();
         modelShader.setMat4("projection", projection);
         modelShader.setMat4("view", view);
-        modelShader.setVec3("viewPos", cameraPos);
-        modelShader.setFloat("material.shininess", 32.0f);
+        // modelShader.setVec3("viewPos", cameraPos);
+        // modelShader.setFloat("material.shininess", 32.0f);
 
         // directional light
-        modelShader.setVec3("dirLight.direction", -0.2f, -1.0f, -0.3f);
-        modelShader.setVec3("dirLight.ambient", 0.1f);
-        modelShader.setVec3("dirLight.diffuse", 0.2f);
-        modelShader.setVec3("dirLight.specular", 0.5f, 0.5f, 0.5f);
+        // modelShader.setVec3("dirLight.direction", -0.2f, -1.0f, -0.3f);
+        // modelShader.setVec3("dirLight.ambient", 0.1f);
+        // modelShader.setVec3("dirLight.diffuse", 0.2f);
+        // modelShader.setVec3("dirLight.specular", 0.5f, 0.5f, 0.5f);
         // spotlight
-        modelShader.setVec3("spotLight.position", cameraPos);
-        modelShader.setVec3("spotLight.direction", cameraFront);
-        modelShader.setVec3("spotLight.ambient", 0.01f);
-        modelShader.setVec3("spotLight.diffuse", 0.8f);
-        modelShader.setVec3("spotLight.specular", 1.0f);
-        modelShader.setFloat("spotLight.constant", 1.0f);
-        modelShader.setFloat("spotLight.linear", 0.09f);
-        modelShader.setFloat("spotLight.quadratic", 0.032f);
-        modelShader.setFloat("spotLight.cutOff", glm::cos(glm::radians(12.5f)));
-        modelShader.setFloat("spotLight.outerCutOff", glm::cos(glm::radians(15.0f)));
+        // modelShader.setVec3("spotLight.position", cameraPos);
+        // modelShader.setVec3("spotLight.direction", cameraFront);
+        // modelShader.setVec3("spotLight.ambient", 0.01f);
+        // modelShader.setVec3("spotLight.diffuse", 0.8f);
+        // modelShader.setVec3("spotLight.specular", 1.0f);
+        // modelShader.setFloat("spotLight.constant", 1.0f);
+        // modelShader.setFloat("spotLight.linear", 0.09f);
+        // modelShader.setFloat("spotLight.quadratic", 0.032f);
+        // modelShader.setFloat("spotLight.cutOff", glm::cos(glm::radians(12.5f)));
+        // modelShader.setFloat("spotLight.outerCutOff", glm::cos(glm::radians(15.0f)));
         // point light 1
-        modelShader.setVec3("pointLights[0].position", pointLight1Position);
-        modelShader.setVec3("pointLights[0].ambient", 0.01f);
-        modelShader.setVec3("pointLights[0].diffuse", 0.8f);
-        modelShader.setVec3("pointLights[0].specular", 1.0f, 1.0f, 1.0f);
-        modelShader.setFloat("pointLights[0].constant", 1.0f);
-        modelShader.setFloat("pointLights[0].linear", 0.09f);
-        modelShader.setFloat("pointLights[0].quadratic", 0.032f);
+        // modelShader.setVec3("pointLights[0].position", pointLight1Position);
+        // modelShader.setVec3("pointLights[0].ambient", 0.01f);
+        // modelShader.setVec3("pointLights[0].diffuse", 0.8f);
+        // modelShader.setVec3("pointLights[0].specular", 1.0f, 1.0f, 1.0f);
+        // modelShader.setFloat("pointLights[0].constant", 1.0f);
+        // modelShader.setFloat("pointLights[0].linear", 0.09f);
+        // modelShader.setFloat("pointLights[0].quadratic", 0.032f);
 
         // lightPos.x = 1.0f + sin(glfwGetTime()) * 2.0f;
         // lightPos.y = sin(glfwGetTime() / 2.0f);
 
-        glm::mat4 model = glm::mat4(1.0f);
-        model = glm::scale(model, glm::vec3(0.4f));
-        model = glm::translate(model, glm::vec3(0.0f, 0.0f, 0.0f));
-        model = glm::rotate(model, (float)elapsedTime, glm::vec3(0.0, 1.0, 0.0));
-        modelShader.setMat4("model", model);
-        ourModel.Draw(modelShader);
-        
-        glDisable(GL_CULL_FACE);
-        
+        // glm::mat4 model = glm::mat4(1.0f);
+        // model = glm::scale(model, glm::vec3(0.4f));
+        // model = glm::translate(model, glm::vec3(0.0f, 0.0f, 0.0f));
+        // model = glm::rotate(model, (float)elapsedTime, glm::vec3(0.0, 1.0, 0.0));
+        // modelShader.setMat4("model", model);
+        // ourModel.Draw(modelShader);
+
+        // glDisable(GL_CULL_FACE);
+
         // mirror cube
-        reflectionShader.use();
-        reflectionShader.setMat4("projection", projection);
-        reflectionShader.setMat4("view", view);
-        reflectionShader.setVec3("cameraPos", cameraPos);
-        model = glm::mat4(1.0f);
-        model = glm::translate(model, glm::vec3(-2.0f, 0.0f, 0.0f));
-        model = glm::rotate(model, (float)elapsedTime, glm::vec3(0.0, 1.0, 0.0));
-        reflectionShader.setMat4("model", model);
-        glBindVertexArray(cubeVAO);
-        glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_CUBE_MAP, cubemapTexture);
-        glDrawArrays(GL_TRIANGLES, 0, 36);
-        glBindVertexArray(0);
-        
+        // reflectionShader.use();
+        // reflectionShader.setMat4("projection", projection);
+        // reflectionShader.setMat4("view", view);
+        // reflectionShader.setVec3("cameraPos", cameraPos);
+        // model = glm::mat4(1.0f);
+        // model = glm::translate(model, glm::vec3(-2.0f, 0.0f, 0.0f));
+        // model = glm::rotate(model, (float)elapsedTime, glm::vec3(0.0, 1.0, 0.0));
+        // reflectionShader.setMat4("model", model);
+        // glBindVertexArray(cubeVAO);
+        // glActiveTexture(GL_TEXTURE0);
+        // glBindTexture(GL_TEXTURE_CUBE_MAP, cubemapTexture);
+        // glDrawArrays(GL_TRIANGLES, 0, 36);
+        // glBindVertexArray(0);
+
         // glass cube
-        refractionShader.use();
-        refractionShader.setMat4("projection", projection);
-        refractionShader.setMat4("view", view);
-        refractionShader.setVec3("cameraPos", cameraPos);
-        model = glm::mat4(1.0f);
-        model = glm::translate(model, glm::vec3(2.0f, 0.0f, 0.0f));
-        model = glm::rotate(model, (float)elapsedTime, glm::vec3(0.0, 1.0, 0.0));
-        refractionShader.setMat4("model", model);
-        glBindVertexArray(cubeVAO);
-        glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_CUBE_MAP, cubemapTexture);
-        glDrawArrays(GL_TRIANGLES, 0, 36);
-        glBindVertexArray(0);
+        // refractionShader.use();
+        // refractionShader.setMat4("projection", projection);
+        // refractionShader.setMat4("view", view);
+        // refractionShader.setVec3("cameraPos", cameraPos);
+        // model = glm::mat4(1.0f);
+        // model = glm::translate(model, glm::vec3(2.0f, 0.0f, 0.0f));
+        // model = glm::rotate(model, (float)elapsedTime, glm::vec3(0.0, 1.0, 0.0));
+        // refractionShader.setMat4("model", model);
+        // glBindVertexArray(cubeVAO);
+        // glActiveTexture(GL_TEXTURE0);
+        // glBindTexture(GL_TEXTURE_CUBE_MAP, cubemapTexture);
+        // glDrawArrays(GL_TRIANGLES, 0, 36);
+        // glBindVertexArray(0);
 
         // single rotating cube
         // glm::mat4 model = glm::mat4(1.0f);
@@ -331,30 +367,43 @@ int main()
         // glDrawArrays(GL_TRIANGLES, 0, 36);
 
         // point light visual representation
-        lightCubeShader.use();
-        lightCubeShader.setMat4("projection", projection);
-        lightCubeShader.setMat4("view", view);
-        lightCubeShader.setVec3("lightColor", glm::vec3(1.0f));
-        glBindVertexArray(lightCubeVAO);
-        model = glm::mat4(1.0f);
-        model = glm::translate(model, pointLight1Position);
-        model = glm::scale(model, glm::vec3(0.15f));
-        lightCubeShader.setMat4("model", model);
-        glDrawArrays(GL_TRIANGLES, 0, 36);
+        // lightCubeShader.use();
+        // lightCubeShader.setMat4("projection", projection);
+        // lightCubeShader.setMat4("view", view);
+        // lightCubeShader.setVec3("lightColor", glm::vec3(1.0f));
+        // glBindVertexArray(lightCubeVAO);
+        // model = glm::mat4(1.0f);
+        // model = glm::translate(model, pointLight1Position);
+        // model = glm::scale(model, glm::vec3(0.15f));
+        // lightCubeShader.setMat4("model", model);
+        // glDrawArrays(GL_TRIANGLES, 0, 36);
 
-        glEnable(GL_CULL_FACE);
+        // glEnable(GL_CULL_FACE);
 
         // skybox
-        glDepthFunc(GL_LEQUAL);
-        skyboxShader.use();
-        skyboxShader.setMat4("projection", projection);
-        skyboxShader.setMat4("view", glm::mat4(glm::mat3(view)));
-        glBindVertexArray(skyboxVAO);
-        glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_CUBE_MAP, cubemapTexture);
-        glDrawArrays(GL_TRIANGLES, 0, 36);
-        glBindVertexArray(0);
-        glDepthFunc(GL_LESS);
+        // glDepthFunc(GL_LEQUAL);
+        // skyboxShader.use();
+        // skyboxShader.setMat4("projection", projection);
+        // skyboxShader.setMat4("view", glm::mat4(glm::mat3(view)));
+        // glBindVertexArray(skyboxVAO);
+        // glActiveTexture(GL_TEXTURE0);
+        // glBindTexture(GL_TEXTURE_CUBE_MAP, cubemapTexture);
+        // glDrawArrays(GL_TRIANGLES, 0, 36);
+        // glBindVertexArray(0);
+        // glDepthFunc(GL_LESS);
+
+        // asteroid belt scene
+        glm::mat4 model = glm::mat4(1.0f);
+        model = glm::translate(model, glm::vec3(0.0f, -3.0f, 0.0f));
+        model = glm::scale(model, glm::vec3(4.0f, 4.0f, 4.0f));
+        modelShader.setMat4("model", model);
+        planet.Draw(modelShader);
+
+        for (unsigned int i = 0; i < amount; i++)
+        {
+            modelShader.setMat4("model", modelMatrices[i]);
+            rock.Draw(modelShader);
+        }
 
         glfwSwapBuffers(window);
         glfwPollEvents();
