@@ -22,6 +22,8 @@ const float FAR_PLANE = 1000.0f;
 
 float deltaTime = 0.0f;
 float lastFrame = 0.0f;
+float lastFPSTime = 0.0f;
+int frameCount = 0;
 
 float lastX = SCREEN_WIDTH / 2.0f;
 float lastY = SCREEN_HEIGHT / 2.0f;
@@ -305,6 +307,14 @@ int main()
         float currentFrame = glfwGetTime();
         deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame;
+
+        frameCount++;
+        if (currentFrame - lastFPSTime >= 1.0f)
+        {
+            std::cout << "FPS: " << frameCount << std::endl;
+            frameCount = 0;
+            lastFPSTime = currentFrame;
+        }
 
         processInput(window);
 
