@@ -23,7 +23,7 @@ public:
     vector<Mesh> meshes;
     string directory;
 
-    Model(char *path)
+    Model(const char *path)
     {
         loadModel(path);
     }
