@@ -83,6 +83,7 @@ int main()
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_CULL_FACE);
     glEnable(GL_MULTISAMPLE);
+    glEnable(GL_FRAMEBUFFER_SRGB);
     // glCullFace(GL_FRONT);
 
     float vertices[] = {
@@ -580,7 +581,7 @@ unsigned int loadCubemap(vector<std::string> faces)
         unsigned char *data = stbi_load(faces[i].c_str(), &width, &height, &nrChannels, 0);
         if (data)
         {
-            glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+            glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_SRGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
             stbi_image_free(data);
         }
         else
