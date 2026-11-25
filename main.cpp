@@ -33,12 +33,12 @@ float lastX = SCREEN_WIDTH / 2.0f;
 float lastY = SCREEN_HEIGHT / 2.0f;
 bool firstMouse = true;
 
-float pitch = 0.0;
-float yaw = -90.0;
+float yaw = -86.4;
+float pitch = -34.6;
 float fov = 45.0;
 
-glm::vec3 cameraPos = glm::vec3(0.0f, 0.0f, 4.0f);
-glm::vec3 cameraFront = glm::vec3(0.0f, 0.0f, -1.0f);
+glm::vec3 cameraPos = glm::vec3(-1.21077f, 6.8401f, 8.03675f);
+glm::vec3 cameraFront = glm::normalize(glm::vec3(0.051685f, -0.567844f, -0.821512f));
 glm::vec3 cameraUp = glm::vec3(0.0f, 1.0f, 0.0f);
 
 glm::vec3 pointLight1Position = glm::vec3(1.5f, 1.0f, 0.5f);
@@ -323,10 +323,10 @@ struct ShadowsScene
 {
     unsigned int depthMapFBO;
     unsigned int depthMap;
-    // unsigned int woodTexture;
+    unsigned int woodTexture;
     Shader shadowMapShader;
-    // Shader sceneShader;
-    // Shader lightCubeShader;
+    Shader sceneShader;
+    Shader lightCubeShader;
     Shader debugQuadShader;
 };
 
@@ -346,8 +346,10 @@ ShadowsScene setupShadowsScene()
                  0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
+    float borderColor[] = {1.0f, 1.0f, 1.0f, 1.0f};
+    glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, borderColor);
 
     glBindFramebuffer(GL_FRAMEBUFFER, depthMapFBO);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, depthMap, 0);
@@ -356,19 +358,16 @@ ShadowsScene setupShadowsScene()
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
     // Shader lightingShader("../resources/lighting.vs", "../resources/lighting.fs");
-    // Shader lightCubeShader("../resources/light_cube.vs", "../resources/light_cube.fs");
+    Shader lightCubeShader("../resources/light_cube.vs", "../resources/light_cube.fs");
     // Shader sceneShader("../resources/point_light_only.vs", "../resources/point_light_only.fs");
+    Shader sceneShader("../resources/point_light_with_shadows.vs", "../resources/point_light_with_shadows.fs");
     Shader shadowMapShader("../resources/shadow_map.vs", "../resources/shadow_map.fs");
     Shader debugQuadShader("../resources/debug_quad.vs", "../resources/debug_quad.fs");
-    // sceneShader.use();
-    // sceneShader.setInt("material.texture_diffuse1", 0);
-    // point light 1
-    // sceneShader.setVec3("pointLights[0].position", lightPos);
-    // sceneShader.setVec3("pointLights[0].ambient", 0.1f);
-    // sceneShader.setVec3("pointLights[0].diffuse", 0.8f);
-    // sceneShader.setVec3("pointLights[0].specular", 1.0f, 1.0f, 1.0f);
+    sceneShader.use();
+    sceneShader.setInt("material.texture_diffuse1", 0);
+    sceneShader.setInt("shadowMap", 1);
 
-    // unsigned int woodTexture = loadTexture("../resources/textures/wood.png");
+    unsigned int woodTexture = loadTexture("../resources/textures/wood.png");
 
     debugQuadShader.use();
     debugQuadShader.setInt("depthMap", 0);
@@ -376,25 +375,30 @@ ShadowsScene setupShadowsScene()
     struct ShadowsScene scene = {
         .depthMapFBO = depthMapFBO,
         .depthMap = depthMap,
-        // .woodTexture = woodTexture,
+        .woodTexture = woodTexture,
         .shadowMapShader = shadowMapShader,
-        // .sceneShader = sceneShader,
-        // .lightCubeShader = lightCubeShader
-        .debugQuadShader = debugQuadShader
-        };
+        .sceneShader = sceneShader,
+        .lightCubeShader = lightCubeShader,
+        .debugQuadShader = debugQuadShader};
 
     return scene;
 }
 
-void renderShadowsSceneObjects(Shader &shader)
+void renderShadowsSceneObjects(Shader &shader, bool shadowMapPass)
 {
-    glDisable(GL_CULL_FACE);
+    if (!shadowMapPass)
+    {
+        glDisable(GL_CULL_FACE);
+    }
     shader.use();
     // floor
     glm::mat4 model = glm::mat4(1.0f);
     shader.setMat4("model", model);
     renderPlane();
-    glEnable(GL_CULL_FACE);
+    if (!shadowMapPass)
+    {
+        glEnable(GL_CULL_FACE);
+    }
     // cubes
     model = glm::mat4(1.0f);
     model = glm::translate(model, glm::vec3(0.0f, 1.5f, 0.0));
@@ -417,58 +421,67 @@ void renderShadowsSceneObjects(Shader &shader)
 void renderShadowsScene(ShadowsScene scene)
 {
     // shadow map pass
-    float near_plane = 1.0f, far_plane = 7.5f;
+    float near_plane = 1.0f, far_plane = 30.0f;
     glm::mat4 lightProjection = glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, near_plane, far_plane);
     glm::mat4 lightView = glm::lookAt(
-        glm::vec3(-2.0f, 4.0f, -1.0f),
+        lightPos,
         glm::vec3(0.0f, 0.0f, 0.0f),
         glm::vec3(0.0f, 1.0f, 0.0f));
     glm::mat4 lightSpaceMatrix = lightProjection * lightView;
     scene.shadowMapShader.use();
     scene.shadowMapShader.setMat4("lightSpaceMatrix", lightSpaceMatrix);
-
     glViewport(0, 0, SHADOW_WIDTH, SHADOW_HEIGHT);
     glBindFramebuffer(GL_FRAMEBUFFER, scene.depthMapFBO);
     glClear(GL_DEPTH_BUFFER_BIT);
-    renderShadowsSceneObjects(scene.shadowMapShader);
+    // glCullFace(GL_FRONT);
+    renderShadowsSceneObjects(scene.shadowMapShader, true);
+    // glCullFace(GL_BACK);
 
-    // reset for rendering to screen 
+    // reset for rendering to screen
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
     glViewport(0, 0, SCREEN_WIDTH * 2, SCREEN_HEIGHT * 2);
     glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     // render scene pass
-    // scene.sceneShader.use();
-    // glActiveTexture(GL_TEXTURE0);
-    // glBindTexture(GL_TEXTURE_2D, scene.woodTexture);
-    // glm::mat4 projection = glm::perspective(glm::radians(fov), (float)SCREEN_WIDTH / (float)SCREEN_HEIGHT, NEAR_PLANE, FAR_PLANE);
-    // glm::mat4 view = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
-    // scene.sceneShader.use();
-    // scene.sceneShader.setMat4("projection", projection);
-    // scene.sceneShader.setMat4("view", view);
-    // scene.sceneShader.setVec3("viewPos", cameraPos);
-    // scene.lightCubeShader.use();
-    // scene.lightCubeShader.setMat4("projection", projection);
-    // scene.lightCubeShader.setMat4("view", view);
-    // scene.lightCubeShader.setVec3("lightColor", glm::vec3(1.0f));
-    // renderShadowsSceneObjects(scene.sceneShader);
+    scene.sceneShader.use();
+    glm::mat4 projection = glm::perspective(glm::radians(fov), (float)SCREEN_WIDTH / (float)SCREEN_HEIGHT, NEAR_PLANE, FAR_PLANE);
+    glm::mat4 view = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
+    scene.sceneShader.use();
+    scene.sceneShader.setMat4("projection", projection);
+    scene.sceneShader.setMat4("view", view);
+    scene.sceneShader.setVec3("viewPos", cameraPos);
+    scene.sceneShader.setMat4("lightSpaceMatrix", lightSpaceMatrix);
+    // point light 1
+    scene.sceneShader.setVec3("pointLights[0].position", lightPos);
+    scene.sceneShader.setVec3("pointLights[0].ambient", 0.1f);
+    scene.sceneShader.setVec3("pointLights[0].diffuse", 0.8f);
+    scene.sceneShader.setVec3("pointLights[0].specular", 1.0f, 1.0f, 1.0f);
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, scene.woodTexture);
+    glActiveTexture(GL_TEXTURE1);
+    glBindTexture(GL_TEXTURE_2D, scene.depthMap);
+    renderShadowsSceneObjects(scene.sceneShader, false);
 
     // point light representation
-    // scene.lightCubeShader.use();
-    // model = glm::mat4(1.0f);
-    // model = glm::translate(model, glm::vec3(lightPos));
-    // model = glm::scale(model, glm::vec3(0.2f));
-    // scene.lightCubeShader.setMat4("model", model);
-    // renderCube();
+    scene.lightCubeShader.use();
+    scene.lightCubeShader.setMat4("projection", projection);
+    scene.lightCubeShader.setMat4("view", view);
+    scene.lightCubeShader.setVec3("lightColor", glm::vec3(1.0f));
+    scene.lightCubeShader.use();
+    glm::mat4 model = glm::mat4(1.0f);
+    model = glm::translate(model, glm::vec3(lightPos));
+    model = glm::scale(model, glm::vec3(0.2f));
+    scene.lightCubeShader.setMat4("model", model);
+    renderCube();
 
     // render debug quar with shadow map depth values
-    scene.debugQuadShader.use();
+    // scene.debugQuadShader.use();
     // scene.debugQuadShader.setFloat("near_plane", near_plane);
     // scene.debugQuadShader.setFloat("far_plane", far_plane);
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, scene.depthMap);
-    renderQuad();
+    // glActiveTexture(GL_TEXTURE0);
+    // glBindTexture(GL_TEXTURE_2D, scene.depthMap);
+    // renderQuad();
 }
 
 int main()
@@ -538,6 +551,8 @@ int main()
         if (!isPaused)
             elapsedTime += deltaTime;
 
+        // move light back and forth
+        lightPos.x = -2.0f + sin(elapsedTime * 2.0f) * 3.0f;
 
         // render scene
         // renderScene1(scene);
@@ -581,14 +596,32 @@ void processInput(GLFWwindow *window)
         glDisable(GL_CULL_FACE);
 
     const float cameraSpeed = 2.5f * deltaTime;
+    bool cameraPosChanged = false;
     if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
+    {
+        cameraPosChanged = true;
         cameraPos += cameraSpeed * cameraFront;
+    }
     if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
+    {
+        cameraPosChanged = true;
         cameraPos -= cameraSpeed * cameraFront;
+    }
     if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
+    {
+        cameraPosChanged = true;
         cameraPos -= glm::normalize(glm::cross(cameraFront, cameraUp)) * cameraSpeed;
+    }
     if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
+    {
+        cameraPosChanged = true;
         cameraPos += glm::normalize(glm::cross(cameraFront, cameraUp)) * cameraSpeed;
+    }
+
+    if (cameraPosChanged)
+    {
+        std::cout << "new cameraPos vector: (" << cameraPos.x << "f, " << cameraPos.y << "f, " << cameraPos.z << "f)" << std::endl;
+    }
 }
 
 void mouse_callback(GLFWwindow *window, double xpos, double ypos)
@@ -617,10 +650,14 @@ void mouse_callback(GLFWwindow *window, double xpos, double ypos)
     if (pitch < -89.0f)
         pitch = -89.0f;
 
+    std::cout << "new yaw: " << yaw << std::endl;
+    std::cout << "new pitch: " << pitch << std::endl;
+
     glm::vec3 direction;
     direction.x = cos(glm::radians(yaw)) * cos(glm::radians(pitch));
     direction.y = sin(glm::radians(pitch));
     direction.z = sin(glm::radians(yaw)) * cos(glm::radians(pitch));
+    std::cout << "new cameraFront vector: (" << direction.x << "f, " << direction.y << "f, " << direction.z << "f)" << std::endl;
     cameraFront = glm::normalize(direction);
 }
 
@@ -890,10 +927,26 @@ void renderQuad()
     {
         float quadVertices[] = {
             // positions        // texture Coords
-            -1.0f,  1.0f, 0.0f, 0.0f, 1.0f,
-            -1.0f, -1.0f, 0.0f, 0.0f, 0.0f,
-             1.0f,  1.0f, 0.0f, 1.0f, 1.0f,
-             1.0f, -1.0f, 0.0f, 1.0f, 0.0f,
+            -1.0f,
+            1.0f,
+            0.0f,
+            0.0f,
+            1.0f,
+            -1.0f,
+            -1.0f,
+            0.0f,
+            0.0f,
+            0.0f,
+            1.0f,
+            1.0f,
+            0.0f,
+            1.0f,
+            1.0f,
+            1.0f,
+            -1.0f,
+            0.0f,
+            1.0f,
+            0.0f,
         };
         glGenVertexArrays(1, &quadVAO);
         glGenBuffers(1, &quadVBO);
@@ -901,9 +954,9 @@ void renderQuad()
         glBindBuffer(GL_ARRAY_BUFFER, quadVBO);
         glBufferData(GL_ARRAY_BUFFER, sizeof(quadVertices), quadVertices, GL_STATIC_DRAW);
         glEnableVertexAttribArray(0);
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void *)0);
         glEnableVertexAttribArray(1);
-        glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
+        glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void *)(3 * sizeof(float)));
     }
     glBindVertexArray(quadVAO);
     glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
