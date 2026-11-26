@@ -13,6 +13,7 @@ void processInput(GLFWwindow *window);
 void mouse_callback(GLFWwindow *window, double xpos, double ypos);
 void scroll_callback(GLFWwindow *window, double xoffset, double yoffset);
 unsigned int loadTexture(const char *path);
+unsigned int loadTextureGammaCorrected(char const *path);
 unsigned int loadCubemap(vector<std::string> faces);
 void renderCube();
 void renderSkybox();
@@ -326,17 +327,20 @@ struct ShadowsScene
     unsigned int depthMapFBO;
     unsigned int depthMap;
     unsigned int woodTexture;
+    unsigned int marbleTexture;
+    unsigned int metalTexture;
     Shader shadowMapShader;
     Shader sceneShader;
     Shader lightCubeShader;
     Shader debugQuadShader;
 };
 
-const unsigned int SHADOW_WIDTH = 1024, SHADOW_HEIGHT = 1024;
+const unsigned int SHADOW_WIDTH = 2048, SHADOW_HEIGHT = 2048;
 ShadowsScene setupShadowsScene()
 {
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_CULL_FACE);
+    // glEnable(GL_FRAMEBUFFER_SRGB);
 
     unsigned int depthMapFBO;
     glGenFramebuffers(1, &depthMapFBO);
@@ -372,6 +376,8 @@ ShadowsScene setupShadowsScene()
     sceneShader.setInt("shadowMap", 1);
 
     unsigned int woodTexture = loadTexture("../resources/textures/wood.png");
+    unsigned int marbleTexture = loadTexture("../resources/textures/marble.jpg");
+    unsigned int metalTexture = loadTexture("../resources/textures/metal.png");
 
     debugQuadShader.use();
     debugQuadShader.setInt("depthMap", 0);
@@ -380,6 +386,8 @@ ShadowsScene setupShadowsScene()
         .depthMapFBO = depthMapFBO,
         .depthMap = depthMap,
         .woodTexture = woodTexture,
+        .marbleTexture = marbleTexture,
+        .metalTexture = metalTexture,
         .shadowMapShader = shadowMapShader,
         .sceneShader = sceneShader,
         .lightCubeShader = lightCubeShader,
@@ -388,32 +396,34 @@ ShadowsScene setupShadowsScene()
     return scene;
 }
 
-void renderShadowsSceneObjects(Shader &shader, bool shadowMapPass)
+void renderShadowsSceneObjects(Shader &shader, ShadowsScene &scene)
 {
-    if (!shadowMapPass)
-    {
-        glDisable(GL_CULL_FACE);
-    }
+    glDisable(GL_CULL_FACE);
     shader.use();
     // floor
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, scene.marbleTexture);
     glm::mat4 model = glm::mat4(1.0f);
     shader.setMat4("model", model);
     renderPlane();
-    if (!shadowMapPass)
-    {
-        glEnable(GL_CULL_FACE);
-    }
+    glEnable(GL_CULL_FACE);
     // cubes
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, scene.metalTexture);
     model = glm::mat4(1.0f);
     model = glm::translate(model, glm::vec3(0.0f, 1.5f, 0.0));
     model = glm::scale(model, glm::vec3(0.5f));
     shader.setMat4("model", model);
     renderCube();
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, scene.woodTexture);
     model = glm::mat4(1.0f);
     model = glm::translate(model, glm::vec3(2.0f, 0.0f, 1.0));
     model = glm::scale(model, glm::vec3(0.5f));
     shader.setMat4("model", model);
     renderCube();
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, scene.metalTexture);
     model = glm::mat4(1.0f);
     model = glm::translate(model, glm::vec3(-1.0f, 0.0f, 2.0));
     model = glm::rotate(model, glm::radians(60.0f), glm::normalize(glm::vec3(1.0, 0.0, 1.0)));
@@ -437,9 +447,7 @@ void renderShadowsScene(ShadowsScene scene)
     glViewport(0, 0, SHADOW_WIDTH, SHADOW_HEIGHT);
     glBindFramebuffer(GL_FRAMEBUFFER, scene.depthMapFBO);
     glClear(GL_DEPTH_BUFFER_BIT);
-    // glCullFace(GL_FRONT);
-    renderShadowsSceneObjects(scene.shadowMapShader, true);
-    // glCullFace(GL_BACK);
+    renderShadowsSceneObjects(scene.shadowMapShader, scene);
 
     // reset for rendering to screen
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -463,15 +471,13 @@ void renderShadowsScene(ShadowsScene scene)
     // scene.sceneShader.setVec3("pointLights[0].specular", 0.5f, 0.5f, 0.5f);
     // directional light
     scene.sceneShader.setVec3("dirLight.direction", glm::vec3(0.0f) - lightPos);
-    scene.sceneShader.setVec3("dirLight.ambient", 0.2f);
-    scene.sceneShader.setVec3("dirLight.diffuse", 0.6f);
-    scene.sceneShader.setVec3("dirLight.specular", 0.3f, 0.3f, 0.3f);
+    scene.sceneShader.setVec3("dirLight.ambient", 0.15f);
+    scene.sceneShader.setVec3("dirLight.diffuse", 0.5f);
+    scene.sceneShader.setVec3("dirLight.specular", 0.4f, 0.4f, 0.4f);
 
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, scene.woodTexture);
     glActiveTexture(GL_TEXTURE1);
     glBindTexture(GL_TEXTURE_2D, scene.depthMap);
-    renderShadowsSceneObjects(scene.sceneShader, false);
+    renderShadowsSceneObjects(scene.sceneShader, scene);
 
     // point light representation
     scene.lightCubeShader.use();
@@ -673,6 +679,49 @@ void scroll_callback(GLFWwindow *window, double xoffset, double yoffset)
 }
 
 unsigned int loadTexture(char const *path)
+{
+    unsigned int textureID;
+    glGenTextures(1, &textureID);
+
+    int width, height, nrComponents;
+    unsigned char *data = stbi_load(path, &width, &height, &nrComponents, 0);
+    if (data)
+    {
+        GLenum format;
+        if (nrComponents == 1)
+        {
+            format = GL_RED;
+        }
+        else if (nrComponents == 3)
+        {
+            format = GL_RGB;
+        }
+        else if (nrComponents == 4)
+        {
+            format = GL_RGBA;
+        }
+
+        glBindTexture(GL_TEXTURE_2D, textureID);
+        glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, data);
+        glGenerateMipmap(GL_TEXTURE_2D);
+
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+        stbi_image_free(data);
+    }
+    else
+    {
+        std::cout << "Filed to load texture from path: " << path << std::endl;
+        stbi_image_free(data);
+    }
+
+    return textureID;
+}
+
+unsigned int loadTextureGammaCorrected(char const *path)
 {
     unsigned int textureID;
     glGenTextures(1, &textureID);
