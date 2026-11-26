@@ -366,9 +366,9 @@ ShadowsScene setupShadowsScene()
     // Shader lightingShader("../resources/lighting.vs", "../resources/lighting.fs");
     Shader lightCubeShader("../resources/light_cube.vs", "../resources/light_cube.fs");
     // Shader sceneShader("../resources/point_light_only.vs", "../resources/point_light_only.fs");
-    // Shader sceneShader("../resources/point_light_with_shadows.vs", "../resources/point_light_with_shadows.fs");
+    Shader sceneShader("../resources/point_light_with_shadows.vs", "../resources/point_light_with_shadows.fs");
     // Shader sceneShader("../resources/directional_light_only.vs", "../resources/directional_light_only.fs");
-    Shader sceneShader("../resources/directional_light_with_shadows.vs", "../resources/directional_light_with_shadows.fs");
+    // Shader sceneShader("../resources/directional_light_with_shadows.vs", "../resources/directional_light_with_shadows.fs");
     Shader shadowMapShader("../resources/shadow_map.vs", "../resources/shadow_map.fs");
     Shader debugQuadShader("../resources/debug_quad.vs", "../resources/debug_quad.fs");
     sceneShader.use();
@@ -436,7 +436,8 @@ void renderShadowsScene(ShadowsScene scene)
 {
     // shadow map pass
     float near_plane = 1.0f, far_plane = 30.0f;
-    glm::mat4 lightProjection = glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, near_plane, far_plane);
+    // glm::mat4 lightProjection = glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, near_plane, far_plane);
+    glm::mat4 lightProjection = glm::perspective(glm::radians(110.0f), (float)SHADOW_WIDTH / (float)SHADOW_HEIGHT, near_plane, far_plane);
     glm::mat4 lightView = glm::lookAt(
         lightPos,
         glm::vec3(0.0f, 0.0f, 0.0f),
@@ -465,15 +466,15 @@ void renderShadowsScene(ShadowsScene scene)
     scene.sceneShader.setVec3("viewPos", cameraPos);
     scene.sceneShader.setMat4("lightSpaceMatrix", lightSpaceMatrix);
     // point light 1
-    // scene.sceneShader.setVec3("pointLights[0].position", lightPos);
-    // scene.sceneShader.setVec3("pointLights[0].ambient", 0.1f);
-    // scene.sceneShader.setVec3("pointLights[0].diffuse", 0.8f);
-    // scene.sceneShader.setVec3("pointLights[0].specular", 0.5f, 0.5f, 0.5f);
+    scene.sceneShader.setVec3("pointLights[0].position", lightPos);
+    scene.sceneShader.setVec3("pointLights[0].ambient", 0.1f);
+    scene.sceneShader.setVec3("pointLights[0].diffuse", 0.8f);
+    scene.sceneShader.setVec3("pointLights[0].specular", 0.5f, 0.5f, 0.5f);
     // directional light
-    scene.sceneShader.setVec3("dirLight.direction", glm::vec3(0.0f) - lightPos);
-    scene.sceneShader.setVec3("dirLight.ambient", 0.15f);
-    scene.sceneShader.setVec3("dirLight.diffuse", 0.5f);
-    scene.sceneShader.setVec3("dirLight.specular", 0.4f, 0.4f, 0.4f);
+    // scene.sceneShader.setVec3("dirLight.direction", glm::vec3(0.0f) - lightPos);
+    // scene.sceneShader.setVec3("dirLight.ambient", 0.15f);
+    // scene.sceneShader.setVec3("dirLight.diffuse", 0.5f);
+    // scene.sceneShader.setVec3("dirLight.specular", 0.4f, 0.4f, 0.4f);
 
     glActiveTexture(GL_TEXTURE1);
     glBindTexture(GL_TEXTURE_2D, scene.depthMap);

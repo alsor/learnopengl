@@ -60,7 +60,6 @@ vec3 CalcDirLight(DirLight light, vec3 normal, vec3 viewDir)
 
 float CalcShadow(vec4 fragPosLightSpace, vec3 normal, vec3 lightDir)
 {
-
     vec3 projCoords = fragPosLightSpace.xyz / fragPosLightSpace.w;
     projCoords = projCoords * 0.5 + 0.5;
     float closestDepth = texture(shadowMap, projCoords.xy).r;
