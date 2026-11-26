@@ -18,6 +18,7 @@ void renderCube();
 void renderSkybox();
 void renderPlane();
 void renderQuad();
+void printCameraSetup();
 
 const unsigned int SCREEN_WIDTH = 900;
 const unsigned int SCREEN_HEIGHT = 900;
@@ -33,12 +34,13 @@ float lastX = SCREEN_WIDTH / 2.0f;
 float lastY = SCREEN_HEIGHT / 2.0f;
 bool firstMouse = true;
 
-float yaw = -86.4;
-float pitch = -34.6;
-float fov = 45.0;
+// camera setup
+float yaw = -68.5;
+float pitch = -37;
+glm::vec3 cameraPos = glm::vec3(-3.15382f, 7.52993f, 8.44137f);
+glm::vec3 cameraFront = glm::normalize(glm::vec3(0.292701f, -0.601815f, -0.743065f));
 
-glm::vec3 cameraPos = glm::vec3(-1.21077f, 6.8401f, 8.03675f);
-glm::vec3 cameraFront = glm::normalize(glm::vec3(0.051685f, -0.567844f, -0.821512f));
+float fov = 45.0;
 glm::vec3 cameraUp = glm::vec3(0.0f, 1.0f, 0.0f);
 
 glm::vec3 pointLight1Position = glm::vec3(1.5f, 1.0f, 0.5f);
@@ -360,7 +362,9 @@ ShadowsScene setupShadowsScene()
     // Shader lightingShader("../resources/lighting.vs", "../resources/lighting.fs");
     Shader lightCubeShader("../resources/light_cube.vs", "../resources/light_cube.fs");
     // Shader sceneShader("../resources/point_light_only.vs", "../resources/point_light_only.fs");
-    Shader sceneShader("../resources/point_light_with_shadows.vs", "../resources/point_light_with_shadows.fs");
+    // Shader sceneShader("../resources/point_light_with_shadows.vs", "../resources/point_light_with_shadows.fs");
+    // Shader sceneShader("../resources/directional_light_only.vs", "../resources/directional_light_only.fs");
+    Shader sceneShader("../resources/directional_light_with_shadows.vs", "../resources/directional_light_with_shadows.fs");
     Shader shadowMapShader("../resources/shadow_map.vs", "../resources/shadow_map.fs");
     Shader debugQuadShader("../resources/debug_quad.vs", "../resources/debug_quad.fs");
     sceneShader.use();
@@ -453,10 +457,16 @@ void renderShadowsScene(ShadowsScene scene)
     scene.sceneShader.setVec3("viewPos", cameraPos);
     scene.sceneShader.setMat4("lightSpaceMatrix", lightSpaceMatrix);
     // point light 1
-    scene.sceneShader.setVec3("pointLights[0].position", lightPos);
-    scene.sceneShader.setVec3("pointLights[0].ambient", 0.1f);
-    scene.sceneShader.setVec3("pointLights[0].diffuse", 0.8f);
-    scene.sceneShader.setVec3("pointLights[0].specular", 1.0f, 1.0f, 1.0f);
+    // scene.sceneShader.setVec3("pointLights[0].position", lightPos);
+    // scene.sceneShader.setVec3("pointLights[0].ambient", 0.1f);
+    // scene.sceneShader.setVec3("pointLights[0].diffuse", 0.8f);
+    // scene.sceneShader.setVec3("pointLights[0].specular", 0.5f, 0.5f, 0.5f);
+    // directional light
+    scene.sceneShader.setVec3("dirLight.direction", glm::vec3(0.0f) - lightPos);
+    scene.sceneShader.setVec3("dirLight.ambient", 0.2f);
+    scene.sceneShader.setVec3("dirLight.diffuse", 0.6f);
+    scene.sceneShader.setVec3("dirLight.specular", 0.3f, 0.3f, 0.3f);
+
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, scene.woodTexture);
     glActiveTexture(GL_TEXTURE1);
@@ -586,6 +596,12 @@ void processInput(GLFWwindow *window)
         isPaused = !isPaused;
     wasSpacePressed = spacePressed;
 
+    static bool wasF12Pressed = false;
+    bool F12Pressed = glfwGetKey(window, GLFW_KEY_F12) == GLFW_PRESS;
+    if (F12Pressed && !wasF12Pressed)
+        printCameraSetup();
+    wasF12Pressed = F12Pressed;
+
     if (glfwGetKey(window, GLFW_KEY_F1) == GLFW_PRESS)
         glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
     if (glfwGetKey(window, GLFW_KEY_F2) == GLFW_PRESS)
@@ -596,31 +612,21 @@ void processInput(GLFWwindow *window)
         glDisable(GL_CULL_FACE);
 
     const float cameraSpeed = 2.5f * deltaTime;
-    bool cameraPosChanged = false;
     if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
     {
-        cameraPosChanged = true;
         cameraPos += cameraSpeed * cameraFront;
     }
     if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
     {
-        cameraPosChanged = true;
         cameraPos -= cameraSpeed * cameraFront;
     }
     if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
     {
-        cameraPosChanged = true;
         cameraPos -= glm::normalize(glm::cross(cameraFront, cameraUp)) * cameraSpeed;
     }
     if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
     {
-        cameraPosChanged = true;
         cameraPos += glm::normalize(glm::cross(cameraFront, cameraUp)) * cameraSpeed;
-    }
-
-    if (cameraPosChanged)
-    {
-        std::cout << "new cameraPos vector: (" << cameraPos.x << "f, " << cameraPos.y << "f, " << cameraPos.z << "f)" << std::endl;
     }
 }
 
@@ -650,14 +656,10 @@ void mouse_callback(GLFWwindow *window, double xpos, double ypos)
     if (pitch < -89.0f)
         pitch = -89.0f;
 
-    std::cout << "new yaw: " << yaw << std::endl;
-    std::cout << "new pitch: " << pitch << std::endl;
-
     glm::vec3 direction;
     direction.x = cos(glm::radians(yaw)) * cos(glm::radians(pitch));
     direction.y = sin(glm::radians(pitch));
     direction.z = sin(glm::radians(yaw)) * cos(glm::radians(pitch));
-    std::cout << "new cameraFront vector: (" << direction.x << "f, " << direction.y << "f, " << direction.z << "f)" << std::endl;
     cameraFront = glm::normalize(direction);
 }
 
@@ -961,4 +963,12 @@ void renderQuad()
     glBindVertexArray(quadVAO);
     glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
     glBindVertexArray(0);
+}
+
+void printCameraSetup()
+{
+    std::cout << "float yaw = " << yaw << ";" << std::endl;
+    std::cout << "float pitch = " << pitch << ";" << std::endl;
+    std::cout << "glm::vec3 cameraPos = glm::vec3(" << cameraPos.x << "f, " << cameraPos.y << "f, " << cameraPos.z << "f);" << std::endl;
+    std::cout << "glm::vec3 cameraFront = glm::normalize(glm::vec3(" << cameraFront.x << "f, " << cameraFront.y << "f, " << cameraFront.z << "f));" << std::endl;
 }
