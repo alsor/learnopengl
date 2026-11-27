@@ -46,7 +46,7 @@ glm::vec3 cameraUp = glm::vec3(0.0f, 1.0f, 0.0f);
 
 glm::vec3 pointLight1Position = glm::vec3(1.5f, 1.0f, 0.5f);
 
-glm::vec3 lightPos(-2.0f, 4.0f, -1.0f);
+glm::vec3 lightPos(0.0f, 0.0f, 0.0f);
 
 bool isPaused = false;
 float elapsedTime = 0.0f;
@@ -322,7 +322,7 @@ void renderPlanetAndAsteroids(PlanetAndAsteroids &scene)
     }
 }
 
-struct ShadowsScene
+struct DirectionalLightShadowsScene
 {
     unsigned int depthMapFBO;
     unsigned int depthMap;
@@ -336,8 +336,14 @@ struct ShadowsScene
 };
 
 const unsigned int SHADOW_WIDTH = 2048, SHADOW_HEIGHT = 2048;
-ShadowsScene setupShadowsScene()
+DirectionalLightShadowsScene setupDirectionalLightShadowsScene()
 {
+    lightPos = glm::vec3(-2.0f, 4.0f, -1.0f);
+    yaw = -68.5;
+    pitch = -37;
+    cameraPos = glm::vec3(-3.15382f, 7.52993f, 8.44137f);
+    cameraFront = glm::normalize(glm::vec3(0.292701f, -0.601815f, -0.743065f));
+
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_CULL_FACE);
     // glEnable(GL_FRAMEBUFFER_SRGB);
@@ -357,20 +363,17 @@ ShadowsScene setupShadowsScene()
     float borderColor[] = {1.0f, 1.0f, 1.0f, 1.0f};
     glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, borderColor);
 
+    // framebuffer to render shadow map into
     glBindFramebuffer(GL_FRAMEBUFFER, depthMapFBO);
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, depthMap, 0);
+    glFramebufferTexture(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, depthMap, 0);
     glDrawBuffer(GL_NONE);
     glReadBuffer(GL_NONE);
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
-    // Shader lightingShader("../resources/lighting.vs", "../resources/lighting.fs");
     Shader lightCubeShader("../resources/light_cube.vs", "../resources/light_cube.fs");
-    // Shader sceneShader("../resources/point_light_only.vs", "../resources/point_light_only.fs");
-    Shader sceneShader("../resources/point_light_with_shadows.vs", "../resources/point_light_with_shadows.fs");
-    // Shader sceneShader("../resources/directional_light_only.vs", "../resources/directional_light_only.fs");
-    // Shader sceneShader("../resources/directional_light_with_shadows.vs", "../resources/directional_light_with_shadows.fs");
     Shader shadowMapShader("../resources/shadow_map.vs", "../resources/shadow_map.fs");
     Shader debugQuadShader("../resources/debug_quad.vs", "../resources/debug_quad.fs");
+    Shader sceneShader("../resources/directional_light_with_shadows.vs", "../resources/directional_light_with_shadows.fs");
     sceneShader.use();
     sceneShader.setInt("material.texture_diffuse1", 0);
     sceneShader.setInt("shadowMap", 1);
@@ -382,7 +385,7 @@ ShadowsScene setupShadowsScene()
     debugQuadShader.use();
     debugQuadShader.setInt("depthMap", 0);
 
-    struct ShadowsScene scene = {
+    struct DirectionalLightShadowsScene scene = {
         .depthMapFBO = depthMapFBO,
         .depthMap = depthMap,
         .woodTexture = woodTexture,
@@ -396,7 +399,7 @@ ShadowsScene setupShadowsScene()
     return scene;
 }
 
-void renderShadowsSceneObjects(Shader &shader, ShadowsScene &scene)
+void renderDirectionalLightShadowsSceneObjects(Shader &shader, DirectionalLightShadowsScene &scene)
 {
     glDisable(GL_CULL_FACE);
     shader.use();
@@ -432,12 +435,16 @@ void renderShadowsSceneObjects(Shader &shader, ShadowsScene &scene)
     renderCube();
 }
 
-void renderShadowsScene(ShadowsScene scene)
+void renderDirectionalLightShadowsScene(DirectionalLightShadowsScene scene)
 {
+    // move light in a circle with vertical oscillation
+    lightPos.x = sin(elapsedTime * 2.0f) * 3.0f;
+    lightPos.z = cos(elapsedTime * 2.0f) * 3.0f;
+    lightPos.y = 2.0f + sin(elapsedTime * 2.0f) * 1.0f;
+
     // shadow map pass
-    float near_plane = 1.0f, far_plane = 30.0f;
-    // glm::mat4 lightProjection = glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, near_plane, far_plane);
-    glm::mat4 lightProjection = glm::perspective(glm::radians(110.0f), (float)SHADOW_WIDTH / (float)SHADOW_HEIGHT, near_plane, far_plane);
+    float near_plane = 0.5f, far_plane = 30.0f;
+    glm::mat4 lightProjection = glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, near_plane, far_plane);
     glm::mat4 lightView = glm::lookAt(
         lightPos,
         glm::vec3(0.0f, 0.0f, 0.0f),
@@ -445,10 +452,13 @@ void renderShadowsScene(ShadowsScene scene)
     glm::mat4 lightSpaceMatrix = lightProjection * lightView;
     scene.shadowMapShader.use();
     scene.shadowMapShader.setMat4("lightSpaceMatrix", lightSpaceMatrix);
+
     glViewport(0, 0, SHADOW_WIDTH, SHADOW_HEIGHT);
     glBindFramebuffer(GL_FRAMEBUFFER, scene.depthMapFBO);
     glClear(GL_DEPTH_BUFFER_BIT);
-    renderShadowsSceneObjects(scene.shadowMapShader, scene);
+    scene.shadowMapShader.use();
+    scene.shadowMapShader.setMat4("lightSpaceMatrix", lightSpaceMatrix);
+    renderDirectionalLightShadowsSceneObjects(scene.shadowMapShader, scene);
 
     // reset for rendering to screen
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -465,20 +475,15 @@ void renderShadowsScene(ShadowsScene scene)
     scene.sceneShader.setMat4("view", view);
     scene.sceneShader.setVec3("viewPos", cameraPos);
     scene.sceneShader.setMat4("lightSpaceMatrix", lightSpaceMatrix);
-    // point light 1
-    scene.sceneShader.setVec3("pointLights[0].position", lightPos);
-    scene.sceneShader.setVec3("pointLights[0].ambient", 0.1f);
-    scene.sceneShader.setVec3("pointLights[0].diffuse", 0.8f);
-    scene.sceneShader.setVec3("pointLights[0].specular", 0.5f, 0.5f, 0.5f);
     // directional light
-    // scene.sceneShader.setVec3("dirLight.direction", glm::vec3(0.0f) - lightPos);
-    // scene.sceneShader.setVec3("dirLight.ambient", 0.15f);
-    // scene.sceneShader.setVec3("dirLight.diffuse", 0.5f);
-    // scene.sceneShader.setVec3("dirLight.specular", 0.4f, 0.4f, 0.4f);
+    scene.sceneShader.setVec3("dirLight.direction", glm::vec3(0.0f) - lightPos);
+    scene.sceneShader.setVec3("dirLight.ambient", 0.15f);
+    scene.sceneShader.setVec3("dirLight.diffuse", 0.5f);
+    scene.sceneShader.setVec3("dirLight.specular", 0.4f, 0.4f, 0.4f);
 
     glActiveTexture(GL_TEXTURE1);
     glBindTexture(GL_TEXTURE_2D, scene.depthMap);
-    renderShadowsSceneObjects(scene.sceneShader, scene);
+    renderDirectionalLightShadowsSceneObjects(scene.sceneShader, scene);
 
     // point light representation
     scene.lightCubeShader.use();
@@ -499,6 +504,194 @@ void renderShadowsScene(ShadowsScene scene)
     // glActiveTexture(GL_TEXTURE0);
     // glBindTexture(GL_TEXTURE_2D, scene.depthMap);
     // renderQuad();
+}
+
+struct PointLightShadowsScene
+{
+    unsigned int depthMapFBO;
+    unsigned int depthCubemap;
+    unsigned int woodTexture;
+    unsigned int marbleTexture;
+    unsigned int metalTexture;
+    Shader shadowMapShader;
+    Shader sceneShader;
+    Shader lightCubeShader;
+};
+
+PointLightShadowsScene setupPointLightShadowsScene()
+{
+    lightPos = glm::vec3(0.0f);
+    yaw = -207.4;
+    pitch = 19.7;
+    cameraPos = glm::vec3(4.24005f, -2.26034f, -3.69516f);
+    cameraFront = glm::normalize(glm::vec3(-0.835849f, 0.337095f, 0.43327f));
+
+    glEnable(GL_DEPTH_TEST);
+    glEnable(GL_CULL_FACE);
+    // glEnable(GL_FRAMEBUFFER_SRGB);
+
+    unsigned int depthMapFBO;
+    glGenFramebuffers(1, &depthMapFBO);
+
+    unsigned int depthCubemap;
+    glGenTextures(1, &depthCubemap);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, depthCubemap);
+    for (unsigned int i = 0; i < 6; i++)
+    {
+        glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_DEPTH_COMPONENT,
+                     SHADOW_WIDTH, SHADOW_HEIGHT, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+    }
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+
+    // framebuffer to render shadow map into
+    glBindFramebuffer(GL_FRAMEBUFFER, depthMapFBO);
+    glFramebufferTexture(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, depthCubemap, 0);
+    glDrawBuffer(GL_NONE);
+    glReadBuffer(GL_NONE);
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+    // Shader lightingShader("../resources/lighting.vs", "../resources/lighting.fs");
+    Shader lightCubeShader("../resources/light_cube.vs", "../resources/light_cube.fs");
+    Shader sceneShader("../resources/point_light_with_shadows.vs", "../resources/point_light_with_shadows.fs");
+    Shader shadowMapShader("../resources/shadow_cubemap.vs", "../resources/shadow_cubemap.fs", "../resources/shadow_cubemap.gs");
+    sceneShader.use();
+    sceneShader.setInt("material.texture_diffuse1", 0);
+    sceneShader.setInt("shadowMap", 1);
+
+    unsigned int woodTexture = loadTexture("../resources/textures/wood.png");
+    unsigned int marbleTexture = loadTexture("../resources/textures/marble.jpg");
+    unsigned int metalTexture = loadTexture("../resources/textures/metal.png");
+
+    struct PointLightShadowsScene scene = {
+        .depthMapFBO = depthMapFBO,
+        .depthCubemap = depthCubemap,
+        .woodTexture = woodTexture,
+        .marbleTexture = marbleTexture,
+        .metalTexture = metalTexture,
+        .shadowMapShader = shadowMapShader,
+        .sceneShader = sceneShader,
+        .lightCubeShader = lightCubeShader};
+
+    return scene;
+}
+
+void renderPointLightShadowsSceneObjects(Shader &shader, PointLightShadowsScene &scene)
+{
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, scene.woodTexture);
+    shader.use();
+
+    // room cube
+    glm::mat4 model = glm::mat4(1.0f);
+    model = glm::scale(model, glm::vec3(5.0f));
+    shader.setMat4("model", model);
+    glDisable(GL_CULL_FACE);
+    shader.setInt("reverse_normals", 1);
+    renderCube();
+    shader.setInt("reverse_normals", 0);
+    glEnable(GL_CULL_FACE);
+    // cubes
+    model = glm::mat4(1.0f);
+    model = glm::translate(model, glm::vec3(4.0f, -3.5f, 0.0));
+    model = glm::scale(model, glm::vec3(0.5f));
+    shader.setMat4("model", model);
+    renderCube();
+    model = glm::mat4(1.0f);
+    model = glm::translate(model, glm::vec3(2.0f, 3.0f, 1.0));
+    model = glm::scale(model, glm::vec3(0.75f));
+    shader.setMat4("model", model);
+    renderCube();
+    model = glm::mat4(1.0f);
+    model = glm::translate(model, glm::vec3(-3.0f, -1.0f, 0.0));
+    model = glm::scale(model, glm::vec3(0.5f));
+    shader.setMat4("model", model);
+    renderCube();
+    model = glm::mat4(1.0f);
+    model = glm::translate(model, glm::vec3(-1.5f, 1.0f, 1.5));
+    model = glm::scale(model, glm::vec3(0.5f));
+    shader.setMat4("model", model);
+    renderCube();
+    model = glm::mat4(1.0f);
+    model = glm::translate(model, glm::vec3(-1.5f, 2.0f, -3.0));
+    model = glm::rotate(model, glm::radians(60.0f), glm::normalize(glm::vec3(1.0, 0.0, 1.0)));
+    model = glm::scale(model, glm::vec3(0.75f));
+    shader.setMat4("model", model);
+    renderCube();
+}
+
+void renderPointLightShadowsScene(PointLightShadowsScene scene)
+{
+    lightPos.z = static_cast<float>(sin(elapsedTime * 0.5) * 3.0);
+
+    // shadow map pass
+    float aspect = (float)SHADOW_WIDTH / (float)SHADOW_HEIGHT;
+    float near_plane = 1.0f;
+    float far_plane = 25.0f;
+    glm::mat4 shadowProj = glm::perspective(glm::radians(90.0f), aspect, near_plane, far_plane);
+    std::vector<glm::mat4> shadowTransforms;
+    shadowTransforms.push_back(shadowProj * glm::lookAt(lightPos, lightPos + glm::vec3(1.0, 0.0, 0.0), glm::vec3(0.0, -1.0, 0.0)));
+    shadowTransforms.push_back(shadowProj * glm::lookAt(lightPos, lightPos + glm::vec3(-1.0, 0.0, 0.0), glm::vec3(0.0, -1.0, 0.0)));
+    shadowTransforms.push_back(shadowProj * glm::lookAt(lightPos, lightPos + glm::vec3(0.0, 1.0, 0.0), glm::vec3(0.0, 0.0, 1.0)));
+    shadowTransforms.push_back(shadowProj * glm::lookAt(lightPos, lightPos + glm::vec3(0.0, -1.0, 0.0), glm::vec3(0.0, 0.0, -1.0)));
+    shadowTransforms.push_back(shadowProj * glm::lookAt(lightPos, lightPos + glm::vec3(0.0, 0.0, 1.0), glm::vec3(0.0, -1.0, 0.0)));
+    shadowTransforms.push_back(shadowProj * glm::lookAt(lightPos, lightPos + glm::vec3(0.0, 0.0, -1.0), glm::vec3(0.0, -1.0, 0.0)));
+
+    glViewport(0, 0, SHADOW_WIDTH, SHADOW_HEIGHT);
+    glBindFramebuffer(GL_FRAMEBUFFER, scene.depthMapFBO);
+    glClear(GL_DEPTH_BUFFER_BIT);
+    scene.shadowMapShader.use();
+    for (unsigned int i = 0; i < 6; ++i)
+        scene.shadowMapShader.setMat4("shadowMatrices[" + std::to_string(i) + "]", shadowTransforms[i]);
+    scene.shadowMapShader.setVec3("lightPos", lightPos);
+    scene.shadowMapShader.setFloat("far_plane", far_plane);
+    renderPointLightShadowsSceneObjects(scene.shadowMapShader, scene);
+
+    // reset for rendering to screen
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    glViewport(0, 0, SCREEN_WIDTH * 2, SCREEN_HEIGHT * 2);
+    glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    // render scene pass
+    scene.sceneShader.use();
+    glm::mat4 projection = glm::perspective(glm::radians(fov), (float)SCREEN_WIDTH / (float)SCREEN_HEIGHT, NEAR_PLANE, FAR_PLANE);
+    glm::mat4 view = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
+    scene.sceneShader.use();
+    scene.sceneShader.setMat4("projection", projection);
+    scene.sceneShader.setMat4("view", view);
+    scene.sceneShader.setVec3("viewPos", cameraPos);
+    scene.sceneShader.setFloat("far_plane", far_plane);
+    // point light 1
+    scene.sceneShader.setVec3("pointLights[0].position", lightPos);
+    scene.sceneShader.setVec3("pointLights[0].ambient", 0.1f);
+    scene.sceneShader.setVec3("pointLights[0].diffuse", 0.5f);
+    scene.sceneShader.setVec3("pointLights[0].specular", 0.4f, 0.4f, 0.4f);
+
+    // for directional light
+    // glActiveTexture(GL_TEXTURE1);
+    // glBindTexture(GL_TEXTURE_2D, scene.depthMap);
+
+    // for point light
+    glActiveTexture(GL_TEXTURE1);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, scene.depthCubemap);
+
+    renderPointLightShadowsSceneObjects(scene.sceneShader, scene);
+
+    // point light representation
+    scene.lightCubeShader.use();
+    scene.lightCubeShader.setMat4("projection", projection);
+    scene.lightCubeShader.setMat4("view", view);
+    scene.lightCubeShader.setVec3("lightColor", glm::vec3(1.0f));
+    scene.lightCubeShader.use();
+    glm::mat4 model = glm::mat4(1.0f);
+    model = glm::translate(model, glm::vec3(lightPos));
+    model = glm::scale(model, glm::vec3(0.2f));
+    scene.lightCubeShader.setMat4("model", model);
+    renderCube();
 }
 
 int main()
@@ -546,7 +739,8 @@ int main()
 
     // Scene1 scene = setupScene1();
     // PlanetAndAsteroids scene = setupPlanetAndAsteroids();
-    ShadowsScene scene = setupShadowsScene();
+    // DirectionalLightShadowsScene scene = setupDirectionalLightShadowsScene();
+    PointLightShadowsScene scene = setupPointLightShadowsScene();
 
     // Render loop
     while (!glfwWindowShouldClose(window))
@@ -568,13 +762,11 @@ int main()
         if (!isPaused)
             elapsedTime += deltaTime;
 
-        // move light back and forth
-        lightPos.x = -2.0f + sin(elapsedTime * 2.0f) * 3.0f;
-
         // render scene
         // renderScene1(scene);
         // renderPlanetAndAsteroids(scene);
-        renderShadowsScene(scene);
+        // renderDirectionalLightShadowsScene(scene);
+        renderPointLightShadowsScene(scene);
 
         glfwSwapBuffers(window);
         glfwPollEvents();
@@ -634,6 +826,14 @@ void processInput(GLFWwindow *window)
     if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
     {
         cameraPos += glm::normalize(glm::cross(cameraFront, cameraUp)) * cameraSpeed;
+    }
+    if (glfwGetKey(window, GLFW_KEY_R) == GLFW_PRESS)
+    {
+        cameraPos.y += cameraSpeed;
+    }
+    if (glfwGetKey(window, GLFW_KEY_F) == GLFW_PRESS)
+    {
+        cameraPos.y -= cameraSpeed;
     }
 }
 
@@ -1017,8 +1217,8 @@ void renderQuad()
 
 void printCameraSetup()
 {
-    std::cout << "float yaw = " << yaw << ";" << std::endl;
-    std::cout << "float pitch = " << pitch << ";" << std::endl;
-    std::cout << "glm::vec3 cameraPos = glm::vec3(" << cameraPos.x << "f, " << cameraPos.y << "f, " << cameraPos.z << "f);" << std::endl;
-    std::cout << "glm::vec3 cameraFront = glm::normalize(glm::vec3(" << cameraFront.x << "f, " << cameraFront.y << "f, " << cameraFront.z << "f));" << std::endl;
+    std::cout << "yaw = " << yaw << ";" << std::endl;
+    std::cout << "pitch = " << pitch << ";" << std::endl;
+    std::cout << "cameraPos = glm::vec3(" << cameraPos.x << "f, " << cameraPos.y << "f, " << cameraPos.z << "f);" << std::endl;
+    std::cout << "cameraFront = glm::normalize(glm::vec3(" << cameraFront.x << "f, " << cameraFront.y << "f, " << cameraFront.z << "f));" << std::endl;
 }
