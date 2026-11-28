@@ -667,9 +667,9 @@ void renderPointLightShadowsScene(PointLightShadowsScene scene)
     scene.sceneShader.setFloat("far_plane", far_plane);
     // point light 1
     scene.sceneShader.setVec3("pointLights[0].position", lightPos);
-    scene.sceneShader.setVec3("pointLights[0].ambient", 0.1f);
-    scene.sceneShader.setVec3("pointLights[0].diffuse", 0.5f);
-    scene.sceneShader.setVec3("pointLights[0].specular", 0.4f, 0.4f, 0.4f);
+    scene.sceneShader.setVec3("pointLights[0].ambient", 0.05f);
+    scene.sceneShader.setVec3("pointLights[0].diffuse", 0.95f);
+    scene.sceneShader.setVec3("pointLights[0].specular", 0.7f, 0.7f, 0.7f);
 
     // for directional light
     // glActiveTexture(GL_TEXTURE1);
